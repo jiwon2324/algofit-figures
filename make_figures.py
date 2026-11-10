@@ -92,26 +92,30 @@ ax.set_title("다음 기간 정답 예측 정확도(AUC)", fontsize=15, loc="lef
 fig.subplots_adjust(left=0.03, right=0.98, top=0.86, bottom=0.2); fig.savefig(OUT / "fig4_예측정확도_AUC.png"); plt.close(fig)
 check["그림4"] = [round(b[1], 3) for b in bars]
 
-# ---------- 그림 5 (03 분석 결과): K-means 학습 유형 — 지표 9개를 2개 축으로 줄여(PCA) 학습자마다 점 1개, 유형마다 도형을 다르게
+# ---------- 그림 5 (03 분석 결과): K-means 학습 유형 — 지표 9개를 '유형이 가장 잘 나뉘는 2개 축'(선형 판별 분석, LDA)으로 요약해
+#            학습자마다 점 1개, 유형마다 도형을 다르게. (PCA 2개 축은 정보의 48%만 담고 CE 비율이 거의 안 실려 문법형이 흩어져 보였음)
 T = engine.transform(X[engine.FEATURES].astype(float))
 Z = engine.standardize(T, X["레이팅 구간"].to_numpy(), S)[engine.FEATURES].astype(float).to_numpy()
-Zc = Z - Z.mean(0); U, s_, Vt = np.linalg.svd(Zc, full_matrices=False); P = Zc @ Vt[:2].T
-expl = (s_ ** 2 / (s_ ** 2).sum())[:2]
-C = pd.DataFrame(S["학습유형"]["군집_중심"], columns=engine.FEATURES).to_numpy(); Pc = (C - Z.mean(0)) @ Vt[:2].T
-DORANGE = "#D9480F"   # 점이 작아도 잘 보이도록 더 진한 주황
+y = X["유형번호"].to_numpy(); mu = Z.mean(0)
+Sw = sum(np.cov(Z[y == k].T) * (np.sum(y == k) - 1) for k in range(1, 5))
+Sb = sum(np.sum(y == k) * np.outer(Z[y == k].mean(0) - mu, Z[y == k].mean(0) - mu) for k in range(1, 5))
+ev, V = np.linalg.eig(np.linalg.solve(Sw, Sb)); V = V[:, np.argsort(-ev.real)[:2]].real
+P = (Z - mu) @ V
+# 가장 가까운 군집 중심 = 저장된 유형 번호인지 확인 (그림이 실제 K-means 결과와 같은지)
+C = np.array(S["학습유형"]["군집_중심"]); assert (((Z[:, None] - C[None]) ** 2).sum(-1).argmin(1) + 1 == y).all()
+DORANGE = "#D9480F"
 sty = {2: ("o", NAVY), 4: ("^", BLUE), 1: ("s", "#1F9E89"), 3: ("D", DORANGE)}   # 로직 점검형 ● · 도전적 시행착오형 ▲ · 효율 개선 필요형 ■ · 문법 실수·빠른 재제출형 ◆
 rng = np.random.default_rng(42); idx = rng.choice(len(X), size=min(2000, len(X)), replace=False)
 fig, ax = plt.subplots(figsize=(5.6, 4.35))
 for k in [2, 4, 1, 3]:
-    m = X["유형번호"].to_numpy()[idx] == k; mk, col = sty[k]
-    small = k == 3                        # 가장 적은 유형(706명)은 맨 위에, 크고 진하게, 흰 테두리로
-    ax.scatter(P[idx][m, 0], P[idx][m, 1], s=34 if small else 16, marker=mk, alpha=0.95 if small else 0.40, color=col,
-               edgecolors="white" if small else "none", linewidths=0.6, zorder=4 if small else 2,
-               label=f"{names[str(k - 1)]} {(X['유형번호'] == k).sum():,}명")
+    m = y[idx] == k; mk, col = sty[k]
+    ax.scatter(P[idx][m, 0], P[idx][m, 1], s=18, marker=mk, alpha=0.55, color=col, edgecolors="none",
+               label=f"{names[str(k - 1)]} {(y == k).sum():,}명")
 for k in range(1, 5):
-    mk, col = sty[k]; ax.scatter(*Pc[k - 1], s=230, marker=mk, color=col, edgecolors="white", linewidths=2.2, zorder=5)
-ax.set_xlim(np.percentile(P[:, 0], 0.5), np.percentile(P[:, 0], 99.5)); ax.set_ylim(np.percentile(P[:, 1], 0.5), np.percentile(P[:, 1], 99.5) * 1.55)
-ax.set_xlabel(f"요약 축 1 (지표 9개 정보의 {expl[0]:.0%})", fontsize=12.5); ax.set_ylabel(f"요약 축 2 ({expl[1]:.0%})", fontsize=12.5)
+    mk, col = sty[k]; ax.scatter(*P[y == k].mean(0), s=240, marker=mk, color=col, edgecolors="white", linewidths=2.2, zorder=5)
+ax.set_xlim(np.percentile(P[:, 0], 0.3), np.percentile(P[:, 0], 99.7))
+lo, hi = np.percentile(P[:, 1], 0.3), np.percentile(P[:, 1], 99.7); ax.set_ylim(lo, hi + (hi - lo) * 0.32)
+ax.set_xlabel("유형을 가장 잘 나누는 축 1 (지표 9개 요약)", fontsize=12.5); ax.set_ylabel("유형을 가장 잘 나누는 축 2", fontsize=12.5)
 ax.tick_params(labelsize=11.5)
 lg = ax.legend(frameon=False, fontsize=11.5, loc="upper left", ncol=2, markerscale=1.7, handletextpad=0.2, columnspacing=0.8)
 for h in lg.legend_handles: h.set_alpha(1)
