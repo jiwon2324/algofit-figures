@@ -98,12 +98,15 @@ Z = engine.standardize(T, X["레이팅 구간"].to_numpy(), S)[engine.FEATURES].
 Zc = Z - Z.mean(0); U, s_, Vt = np.linalg.svd(Zc, full_matrices=False); P = Zc @ Vt[:2].T
 expl = (s_ ** 2 / (s_ ** 2).sum())[:2]
 C = pd.DataFrame(S["학습유형"]["군집_중심"], columns=engine.FEATURES).to_numpy(); Pc = (C - Z.mean(0)) @ Vt[:2].T
-sty = {2: ("o", NAVY), 4: ("^", BLUE), 1: ("s", "#1F9E89"), 3: ("D", ORANGE)}   # 로직 점검형 ● · 도전적 시행착오형 ▲ · 효율 개선 필요형 ■ · 문법 실수·빠른 재제출형 ◆
+DORANGE = "#D9480F"   # 점이 작아도 잘 보이도록 더 진한 주황
+sty = {2: ("o", NAVY), 4: ("^", BLUE), 1: ("s", "#1F9E89"), 3: ("D", DORANGE)}   # 로직 점검형 ● · 도전적 시행착오형 ▲ · 효율 개선 필요형 ■ · 문법 실수·빠른 재제출형 ◆
 rng = np.random.default_rng(42); idx = rng.choice(len(X), size=min(2000, len(X)), replace=False)
 fig, ax = plt.subplots(figsize=(5.6, 4.35))
 for k in [2, 4, 1, 3]:
     m = X["유형번호"].to_numpy()[idx] == k; mk, col = sty[k]
-    ax.scatter(P[idx][m, 0], P[idx][m, 1], s=18, marker=mk, alpha=0.55, color=col, edgecolors="none",
+    small = k == 3                        # 가장 적은 유형(706명)은 맨 위에, 크고 진하게, 흰 테두리로
+    ax.scatter(P[idx][m, 0], P[idx][m, 1], s=34 if small else 16, marker=mk, alpha=0.95 if small else 0.40, color=col,
+               edgecolors="white" if small else "none", linewidths=0.6, zorder=4 if small else 2,
                label=f"{names[str(k - 1)]} {(X['유형번호'] == k).sum():,}명")
 for k in range(1, 5):
     mk, col = sty[k]; ax.scatter(*Pc[k - 1], s=230, marker=mk, color=col, edgecolors="white", linewidths=2.2, zorder=5)
