@@ -3,7 +3,7 @@
 그림 크기(인치)를 슬라이드에 넣는 크기와 같게 맞춰, 글자 크기(pt)가 슬라이드에서도 그대로 보이게 함"""
 import sys, os, glob
 from pathlib import Path
-import matplotlib, matplotlib.ticker
+import matplotlib, matplotlib.ticker, matplotlib.patches
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
@@ -57,16 +57,20 @@ fig.add_artist(con)
 fig.text(0.50, 0.63, "펼쳐 보면", ha="center", fontsize=14, color=ORANGE)
 fig.savefig(OUT / "fig1_문제제기_정답률과_공식실력점수.png"); plt.close(fig)
 
-# ---------- 그림 2 (03 분석 결과): 전체 판정 — 공식 실력 점수와 비교
+# ---------- 그림 2 (03 분석 결과): 전체 판정 — 공식 실력 점수와 비교 (합이 8,502명인 '전체 중 비율'이라 도넛)
 J = D["전체 판정"].value_counts()
 order = [("실력 부족", "실력 부족", ORANGE), ("레이팅 수준", "점수만큼", MID), ("레이팅 이상", "점수 이상", BLUE)]
 vals = [int(J[k]) for k, _, _ in order]; assert sum(vals) == len(D); check["그림2 합"] = sum(vals)
-fig, ax = plt.subplots(figsize=(3.75, 3.1))
-ax.barh([n for _, n, _ in order][::-1], vals[::-1], color=[c for *_, c in order][::-1], height=0.62)
-for i, v in enumerate(vals[::-1]): ax.text(v + 80, i, f"{v:,}명\n({v / sum(vals):.1%})", va="center", fontsize=13, linespacing=1.0)
-ax.set_xlim(0, max(vals) * 1.62); ax.set_xticks([]); ax.spines["bottom"].set_visible(False); ax.tick_params(axis="y", labelsize=14)
-ax.set_title("공식 실력 점수와 비교한 판정", fontsize=15, loc="left", pad=8)
-fig.subplots_adjust(left=0.27, right=0.98, top=0.86, bottom=0.04); fig.savefig(OUT / "fig2_전체판정.png"); plt.close(fig)
+fig = plt.figure(figsize=(3.75, 3.1))
+ax = fig.add_axes([0.0, 0.02, 0.56, 0.80])
+ax.pie(vals, colors=[c for *_, c in order], startangle=90, counterclock=False, wedgeprops=dict(width=0.36, edgecolor="white", linewidth=2))
+ax.text(0, 0.08, f"{sum(vals):,}명", ha="center", va="center", fontsize=14); ax.text(0, -0.2, "진단 대상", ha="center", va="center", fontsize=10.5, color=SUB)
+for i, ((_, n, c), v) in enumerate(zip(order, vals)):
+    y = 0.70 - i * 0.24
+    fig.patches.append(matplotlib.patches.Rectangle((0.585, y + 0.035), 0.035, 0.05, color=c, transform=fig.transFigure, figure=fig))
+    fig.text(0.64, y + 0.06, n, fontsize=13, va="center"); fig.text(0.64, y - 0.035, f"{v:,}명 ({v / sum(vals):.1%})", fontsize=12, va="center", color=SUB)
+fig.text(0.03, 0.93, "공식 실력 점수와 비교한 판정", fontsize=15, fontweight="bold", va="center")
+fig.savefig(OUT / "fig2_전체판정.png"); plt.close(fig)
 
 # ---------- 그림 3 (03 분석 결과): 고른 약한 분야가 다음 기간에도 약했던 비율
 v2 = pd.read_csv(o / "step6_①같은개수.csv", index_col=0)["C에서도 기대 이하(적중률)"] * 100
@@ -78,19 +82,24 @@ ax.set_title("약한 분야가 다음 기간에도 약함", fontsize=15, loc="le
 fig.subplots_adjust(left=0.03, right=0.98, top=0.86, bottom=0.2); fig.savefig(OUT / "fig3_약한분야_적중률.png"); plt.close(fig)
 check["그림3"] = [round(x, 1) for x in v2.values]
 
-# ---------- 그림 4 (03 분석 결과): 다음 기간 정답 예측 정확도(AUC)
+# ---------- 그림 4 (03 분석 결과): 다음 기간 정답 예측 정확도(AUC) — '이전 → 이후'가 핵심이라 점 두 개를 화살표로 이음
 v3 = pd.read_csv(o / "step6_②예측.csv", index_col=0)["AUC"]; v4 = pd.read_csv(o / "step6_③레이팅.csv", index_col=0)["AUC"]
-bars = [("공식 실력\n점수", v4.iloc[1], MID), ("평소 실력\n점수", v4.iloc[0], NAVY), ("공식\n점수만", v3.iloc[0], MID), ("+ 진단\n결과", v3.iloc[1], NAVY)]
+rows = [("실력 점수 바꾸기", "공식 실력 점수", v4.iloc[1], "평소 실력 점수", v4.iloc[0]),
+        ("진단 결과 더하기", "공식 점수만", v3.iloc[0], "+ 진단 결과", v3.iloc[1])]
 fig, ax = plt.subplots(figsize=(3.75, 3.1))
-xs = [0, 1, 2.5, 3.5]
-ax.bar(xs, [b[1] for b in bars], color=[b[2] for b in bars], width=0.8)
-for x, b in zip(xs, bars): ax.text(x, b[1] + 0.0015, f"{b[1]:.3f}", ha="center", fontsize=13)
-ax.set_xticks(xs, [b[0] for b in bars], fontsize=12); ax.set_ylim(0.68, 0.762); ax.set_yticks([])
+for i, (ttl, l0, a0, l1, a1) in enumerate(rows):
+    y = 1 - i
+    ax.annotate("", xy=(a1, y), xytext=(a0, y), arrowprops=dict(arrowstyle="-|>,head_length=0.7,head_width=0.4", color=NAVY, lw=2.6, shrinkA=7, shrinkB=7))
+    ax.scatter([a0], [y], s=110, color=MID, zorder=3); ax.scatter([a1], [y], s=130, color=NAVY, zorder=3)
+    ax.text(a0 - 0.0018, y, f"{l0}\n{a0:.3f}", ha="right", va="center", fontsize=11.5, color=SUB, linespacing=1.15)
+    ax.text(a1 + 0.0018, y, f"{l1}\n{a1:.3f}", ha="left", va="center", fontsize=11.5, color=NAVY, linespacing=1.15)
+    ax.text(0.697, y + 0.36, ttl, fontsize=12.5, va="bottom")
+ax.set_xlim(0.695, 0.768); ax.set_ylim(-0.45, 1.62); ax.set_yticks([])
+ax.set_xticks([0.70, 0.72, 0.74, 0.76]); ax.tick_params(axis="x", labelsize=11)
 ax.spines["left"].set_visible(False)
-ax.text(0.0, 0.97, "세로축 0.68부터", transform=ax.transAxes, fontsize=10.5, color=SUB, va="top")
 ax.set_title("다음 기간 정답 예측 정확도(AUC)", fontsize=15, loc="left", pad=8)
-fig.subplots_adjust(left=0.03, right=0.98, top=0.86, bottom=0.2); fig.savefig(OUT / "fig4_예측정확도_AUC.png"); plt.close(fig)
-check["그림4"] = [round(b[1], 3) for b in bars]
+fig.subplots_adjust(left=0.03, right=0.97, top=0.86, bottom=0.11); fig.savefig(OUT / "fig4_예측정확도_AUC.png"); plt.close(fig)
+check["그림4"] = [round(r[2], 3) for r in rows] + [round(r[4], 3) for r in rows]
 
 # ---------- 그림 5 (03 분석 결과): K-means 학습 유형 — 지표 9개를 '유형이 가장 잘 나뉘는 2개 축'(선형 판별 분석, LDA)으로 요약해
 #            학습자마다 점 1개, 유형마다 도형을 다르게. (PCA 2개 축은 정보의 48%만 담고 CE 비율이 거의 안 실려 문법형이 흩어져 보였음)
