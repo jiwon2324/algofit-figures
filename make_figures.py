@@ -112,23 +112,25 @@ ev, V = np.linalg.eig(np.linalg.solve(Sw, Sb)); V = V[:, np.argsort(-ev.real)[:2
 P = (Z - mu) @ V
 # 가장 가까운 군집 중심 = 저장된 유형 번호인지 확인 (그림이 실제 K-means 결과와 같은지)
 C = np.array(S["학습유형"]["군집_중심"]); assert (((Z[:, None] - C[None]) ** 2).sum(-1).argmin(1) + 1 == y).all()
-DORANGE = "#D9480F"
-sty = {2: ("o", NAVY), 4: ("^", BLUE), 1: ("s", "#1F9E89"), 3: ("D", DORANGE)}   # 로직 점검형 ● · 도전적 시행착오형 ▲ · 효율 개선 필요형 ■ · 문법 실수·빠른 재제출형 ◆
-rng = np.random.default_rng(42); idx = rng.choice(len(X), size=min(2000, len(X)), replace=False)
+DORANGE, PURPLE = "#D9480F", "#8E44AD"
+# 로직 점검형 ● 남색 · 도전적 시행착오형 ▲ 보라 · 효율 개선 필요형 ■ 청록 · 문법 실수·빠른 재제출형 ◆ 주황 (서로 잘 구별되는 4색)
+sty = {2: ("o", NAVY), 4: ("^", PURPLE), 1: ("s", "#1F9E89"), 3: ("D", DORANGE)}
+rng = np.random.default_rng(42); idx = rng.choice(len(X), size=min(1200, len(X)), replace=False)
 fig, ax = plt.subplots(figsize=(5.6, 4.35))
-for k in [2, 4, 1, 3]:
+for k in [2, 4, 1, 3]:                                    # 배경: 학습자 점은 작고 옅게
     m = y[idx] == k; mk, col = sty[k]
-    ax.scatter(P[idx][m, 0], P[idx][m, 1], s=18, marker=mk, alpha=0.55, color=col, edgecolors="none",
-               label=f"{names[str(k - 1)]} {(y == k).sum():,}명")
-for k in range(1, 5):
-    mk, col = sty[k]; ax.scatter(*P[y == k].mean(0), s=240, marker=mk, color=col, edgecolors="white", linewidths=2.2, zorder=5)
-ax.set_xlim(np.percentile(P[:, 0], 0.3), np.percentile(P[:, 0], 99.7))
-lo, hi = np.percentile(P[:, 1], 0.3), np.percentile(P[:, 1], 99.7); ax.set_ylim(lo, hi + (hi - lo) * 0.32)
-ax.set_xlabel("유형을 가장 잘 나누는 축 1 (지표 9개 요약)", fontsize=12.5); ax.set_ylabel("유형을 가장 잘 나누는 축 2", fontsize=12.5)
-ax.tick_params(labelsize=11.5)
-lg = ax.legend(frameon=False, fontsize=11.5, loc="upper left", ncol=2, markerscale=1.7, handletextpad=0.2, columnspacing=0.8)
-for h in lg.legend_handles: h.set_alpha(1)
-ax.set_title("풀이 습관이 비슷한 학습자끼리 4묶음 (K-means)", fontsize=14, loc="left", pad=8)
-fig.subplots_adjust(left=0.12, right=0.98, top=0.91, bottom=0.13); fig.savefig(OUT / "fig5_학습유형_Kmeans.png"); plt.close(fig)
+    ax.scatter(P[idx][m, 0], P[idx][m, 1], s=11, marker=mk, alpha=0.28, color=col, edgecolors="none", zorder=1)
+from matplotlib.patches import Ellipse
+for k in [2, 4, 1, 3]:                                    # 유형마다 학습자 대부분이 모인 범위(표준편차 1배 타원) + 중심
+    mk, col = sty[k]; Q = P[y == k]; c = Q.mean(0); cov = np.cov(Q.T)
+    val, vec = np.linalg.eigh(cov); ang = np.degrees(np.arctan2(vec[1, 1], vec[0, 1]))
+    ax.add_patch(Ellipse(c, 2 * np.sqrt(val[1]), 2 * np.sqrt(val[0]), angle=ang, facecolor=col, alpha=0.13, edgecolor="none", zorder=2))
+    ax.add_patch(Ellipse(c, 2 * np.sqrt(val[1]), 2 * np.sqrt(val[0]), angle=ang, facecolor="none", edgecolor=col, lw=2.2, zorder=3))
+    ax.scatter(*c, s=260, marker=mk, color=col, edgecolors="white", linewidths=2.4, zorder=5)
+ax.set_xlim(np.percentile(P[:, 0], 1), np.percentile(P[:, 0], 99)); ax.set_ylim(np.percentile(P[:, 1], 1), np.percentile(P[:, 1], 99))
+ax.set_xticks([]); ax.set_yticks([])
+for sp in ("left", "bottom"): ax.spines[sp].set_color("#9AA3AE")
+ax.set_xlabel("유형을 가장 잘 나누는 축 1 (지표 9개 요약)", fontsize=12); ax.set_ylabel("축 2", fontsize=12)
+fig.subplots_adjust(left=0.07, right=0.98, top=0.98, bottom=0.08); fig.savefig(OUT / "fig5_학습유형_Kmeans.png"); plt.close(fig)
 check["그림5 유형 인원"] = {names[str(k - 1)]: int((X["유형번호"] == k).sum()) for k in range(1, 5)}
 for k, v in check.items(): print(k, v)
