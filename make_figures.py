@@ -78,24 +78,27 @@ fig, ax = plt.subplots(figsize=(3.75, 3.1))
 ax.bar(["우리 진단", "정답률\n낮은 순", "무작위"], v2.values, color=[NAVY, MID, "#B8BFC9"], width=0.6)
 for i, v in enumerate(v2.values): ax.text(i, v + 0.8, f"{v:.1f}%", ha="center", fontsize=14)
 ax.set_ylim(0, 55); ax.set_yticks([]); ax.spines["left"].set_visible(False); ax.tick_params(axis="x", labelsize=13)
-ax.set_title("약한 분야가 다음 기간에도 약함", fontsize=15, loc="left", pad=8)
-fig.subplots_adjust(left=0.03, right=0.98, top=0.86, bottom=0.2); fig.savefig(OUT / "fig3_약한분야_적중률.png"); plt.close(fig)
+ax.set_title("약한 분야가 다음 기간에도 약함", fontsize=15, loc="left", pad=26)
+ax.text(0.0, 1.035, "고른 약한 분야 중 다음 기간에도 예상보다 덜 맞힌 비율", transform=ax.transAxes, fontsize=10.5, color=SUB, va="bottom")
+fig.subplots_adjust(left=0.03, right=0.98, top=0.80, bottom=0.2); fig.savefig(OUT / "fig3_약한분야_적중률.png"); plt.close(fig)
 check["그림3"] = [round(x, 1) for x in v2.values]
 
 # ---------- 그림 4 (03 분석 결과): 다음 기간 정답 예측 정확도(AUC) — '이전 → 이후'가 핵심이라 점 두 개를 화살표로 이음
 v3 = pd.read_csv(o / "step6_②예측.csv", index_col=0)["AUC"]; v4 = pd.read_csv(o / "step6_③레이팅.csv", index_col=0)["AUC"]
-rows = [("실력 점수 바꾸기", "공식 실력 점수", v4.iloc[1], "평소 실력 점수", v4.iloc[0]),
-        ("진단 결과 더하기", "공식 점수만", v3.iloc[0], "+ 진단 결과", v3.iloc[1])]
+rows = [("공식 점수 대신 평소 실력 점수로", "공식 실력 점수", v4.iloc[1], "평소 실력 점수", v4.iloc[0]),
+        ("공식 점수에 진단 결과 추가", "공식 점수만", v3.iloc[0], "+ 진단 결과", v3.iloc[1])]
 fig, ax = plt.subplots(figsize=(3.75, 3.1))
 for i, (ttl, l0, a0, l1, a1) in enumerate(rows):
-    y = 1 - i
-    ax.annotate("", xy=(a1, y), xytext=(a0, y), arrowprops=dict(arrowstyle="-|>,head_length=0.7,head_width=0.4", color=NAVY, lw=2.6, shrinkA=7, shrinkB=7))
-    ax.scatter([a0], [y], s=110, color=MID, zorder=3); ax.scatter([a1], [y], s=130, color=NAVY, zorder=3)
-    ax.text(a0 - 0.0018, y, f"{l0}\n{a0:.3f}", ha="right", va="center", fontsize=11.5, color=SUB, linespacing=1.15)
-    ax.text(a1 + 0.0018, y, f"{l1}\n{a1:.3f}", ha="left", va="center", fontsize=11.5, color=NAVY, linespacing=1.15)
-    ax.text(0.697, y + 0.36, ttl, fontsize=12.5, va="bottom")
-ax.set_xlim(0.695, 0.768); ax.set_ylim(-0.45, 1.62); ax.set_yticks([])
-ax.set_xticks([0.70, 0.72, 0.74, 0.76]); ax.tick_params(axis="x", labelsize=11)
+    y = (1 - i) * 1.3
+    ax.annotate("", xy=(a1, y), xytext=(a0, y), arrowprops=dict(arrowstyle="-|>,head_length=0.6,head_width=0.35", color=NAVY, lw=2.4, shrinkA=6, shrinkB=6))
+    ax.scatter([a0], [y], s=100, color=MID, zorder=3); ax.scatter([a1], [y], s=120, color=NAVY, zorder=3)
+    ax.text(a0 + 0.0006, y + 0.14, l0, ha="right", va="bottom", fontsize=11, color=SUB)          # 이름: 시작 점은 왼쪽으로, 끝 점은 오른쪽으로 뻗게
+    ax.text(a1 - 0.0006, y + 0.14, l1, ha="left", va="bottom", fontsize=11, color=NAVY)
+    ax.text(a0, y - 0.16, f"{a0:.3f}", ha="center", va="top", fontsize=13, color=SUB)
+    ax.text(a1, y - 0.16, f"{a1:.3f}", ha="center", va="top", fontsize=14, color=NAVY)
+    ax.text(0.7015, y + 0.50, ttl, fontsize=11.5, va="bottom")
+ax.set_xlim(0.701, 0.756); ax.set_ylim(-0.50, 2.10); ax.set_yticks([])
+ax.set_xticks([0.71, 0.72, 0.73, 0.74, 0.75]); ax.tick_params(axis="x", labelsize=10.5)
 ax.spines["left"].set_visible(False)
 ax.set_title("다음 기간 정답 예측 정확도(AUC)", fontsize=15, loc="left", pad=8)
 fig.subplots_adjust(left=0.03, right=0.97, top=0.86, bottom=0.11); fig.savefig(OUT / "fig4_예측정확도_AUC.png"); plt.close(fig)
