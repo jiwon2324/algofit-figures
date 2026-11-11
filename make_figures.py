@@ -94,8 +94,9 @@ for i, (ttl, l0, a0, l1, a1) in enumerate(rows):
     ax.scatter([a0], [y], s=100, color=MID, zorder=3); ax.scatter([a1], [y], s=120, color=NAVY, zorder=3)
     ax.text(a0 + 0.0006, y + 0.14, l0, ha="right", va="bottom", fontsize=11, color=SUB)          # 이름: 시작 점은 왼쪽으로, 끝 점은 오른쪽으로 뻗게
     ax.text(a1 - 0.0006, y + 0.14, l1, ha="left", va="bottom", fontsize=11, color=NAVY)
-    ax.text(a0, y - 0.16, f"{a0:.3f}", ha="center", va="top", fontsize=13, color=SUB)
-    ax.text(a1, y - 0.16, f"{a1:.3f}", ha="center", va="top", fontsize=14, color=NAVY)
+    ax.text(a0 + 0.0008, y - 0.16, f"{a0:.3f}", ha="right", va="top", fontsize=13, color=SUB)      # 시작 숫자는 점의 왼쪽 아래
+    ax.text(a1 - 0.0008, y - 0.16, f"{a1:.3f}", ha="left", va="top", fontsize=14, color=NAVY)      # 끝 숫자는 점의 오른쪽 아래
+    ax.text(a1 + 0.0022, y, f"(+{a1 - a0:.3f})", ha="left", va="center", fontsize=10.5, color=NAVY)   # 오른 폭 (끝 점 바로 오른쪽)
     ax.text(0.7015, y + 0.50, ttl, fontsize=11.5, va="bottom")
 ax.set_xlim(0.701, 0.756); ax.set_ylim(-0.50, 2.10); ax.set_yticks([])
 ax.set_xticks([0.71, 0.72, 0.73, 0.74, 0.75]); ax.tick_params(axis="x", labelsize=10.5)
