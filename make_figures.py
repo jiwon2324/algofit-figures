@@ -114,6 +114,10 @@ Sw = sum(np.cov(Z[y == k].T) * (np.sum(y == k) - 1) for k in range(1, 5))
 Sb = sum(np.sum(y == k) * np.outer(Z[y == k].mean(0) - mu, Z[y == k].mean(0) - mu) for k in range(1, 5))
 ev, V = np.linalg.eig(np.linalg.solve(Sw, Sb)); V = V[:, np.argsort(-ev.real)[:2]].real
 P = (Z - mu) @ V
+# 고유벡터 부호는 임의라서, 축 이름과 맞도록 방향을 고정: 축 1은 '평균 제출 수'가 클수록 오른쪽, 축 2는 'CE 비율'이 클수록 위쪽
+for j, f in ((0, "평균 제출 수"), (1, "CE 비율")):
+    if np.corrcoef(P[:, j], Z[:, engine.FEATURES.index(f)])[0, 1] < 0: P[:, j] *= -1
+check["그림5 축과 지표 상관"] = {f: [round(float(np.corrcoef(P[:, j], Z[:, i])[0, 1]), 2) for j in range(2)] for i, f in enumerate(engine.FEATURES)}
 # 가장 가까운 군집 중심 = 저장된 유형 번호인지 확인 (그림이 실제 K-means 결과와 같은지)
 C = np.array(S["학습유형"]["군집_중심"]); assert (((Z[:, None] - C[None]) ** 2).sum(-1).argmin(1) + 1 == y).all()
 DORANGE, PURPLE = "#D9480F", "#8E44AD"
@@ -134,7 +138,27 @@ for k in [2, 4, 1, 3]:                                    # 유형마다 학습�
 ax.set_xlim(np.percentile(P[:, 0], 1), np.percentile(P[:, 0], 99)); ax.set_ylim(np.percentile(P[:, 1], 1), np.percentile(P[:, 1], 99))
 ax.set_xticks([]); ax.set_yticks([])
 for sp in ("left", "bottom"): ax.spines[sp].set_color("#9AA3AE")
-ax.set_xlabel("유형을 가장 잘 나누는 축 1 (지표 9개 요약)", fontsize=12); ax.set_ylabel("축 2", fontsize=12)
+ax.set_xlabel("← 첫 제출에 맞힘        축 1        여러 번 고쳐 냄·어려운 문제 →", fontsize=11.5); ax.set_ylabel("← 오답(WA) 많음      축 2      문법·시간 초과 많음 →", fontsize=11)
 fig.subplots_adjust(left=0.07, right=0.98, top=0.98, bottom=0.08); fig.savefig(OUT / "fig5_학습유형_Kmeans.png"); plt.close(fig)
+# ---------- 그림 6 (03 분석 결과): 군집 수 정하기 — 엘보우(군집 안 거리 제곱합) + 실루엣
+#            output/step4_k_selection.csv 는 팀 분석 환경(capstone/.venv, scikit-learn)에서 k=1~8로 K-means를 돌려 저장한 값
+K = pd.read_csv(o / "step4_k_selection.csv")
+fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.2, 3.6), gridspec_kw={"width_ratios": [1.35, 1]})
+a1.plot(K["k"], K["inertia"] / 1000, color=MID, lw=2.4, marker="o", ms=7, zorder=2)
+k4 = K[K["k"] == 4].iloc[0]
+a1.scatter([4], [k4["inertia"] / 1000], s=170, color=ORANGE, zorder=3)
+for _, r in K.iterrows():
+    if r["k"] > 1: a1.text(r["k"], r["inertia"] / 1000 + 1.3, f"−{r['감소율%']:.1f}%", ha="center", fontsize=10.5, color=ORANGE if r["k"] == 4 else SUB)
+a1.set_xticks(K["k"]); a1.set_xlabel("군집 수 k", fontsize=12.5); a1.set_ylabel("군집 안 거리 제곱합 (천)", fontsize=12)
+a1.set_ylim(K["inertia"].min() / 1000 * 0.9, K["inertia"].max() / 1000 * 1.06)
+a1.set_title("엘보우: k=4 이후 줄어드는 폭이 완만", fontsize=14.5, loc="left", pad=8)
+S2 = K[K["k"] > 1]
+a2.bar(S2["k"], S2["silhouette"], color=[ORANGE if k == 4 else MID for k in S2["k"]], width=0.6)
+for _, r in S2.iterrows(): a2.text(r["k"], r["silhouette"] + 0.004, f"{r['silhouette']:.3f}", ha="center", fontsize=10.5)
+a2.set_xticks(S2["k"]); a2.set_xlabel("군집 수 k", fontsize=12.5); a2.set_ylim(0, 0.22); a2.set_yticks([])
+a2.spines["left"].set_visible(False)
+a2.set_title("실루엣: k=5부터 크게 낮아짐", fontsize=14.5, loc="left", pad=8)
+fig.subplots_adjust(left=0.07, right=0.99, top=0.86, bottom=0.17, wspace=0.18); fig.savefig(OUT / "fig6_군집수_엘보우.png"); plt.close(fig)
+check["그림6 k별"] = K[["k", "감소율%", "silhouette"]].round(3).values.tolist()
 check["그림5 유형 인원"] = {names[str(k - 1)]: int((X["유형번호"] == k).sum()) for k in range(1, 5)}
 for k, v in check.items(): print(k, v)
